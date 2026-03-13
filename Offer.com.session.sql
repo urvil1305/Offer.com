@@ -1,81 +1,71 @@
--- 1. Create the Database
-CREATE DATABASE Offer_db;
-    USE Offer_db;
-    
--- 2. Admin Table (Independent)
+-- 1. Database Initialization
+CREATE DATABASE IF NOT EXISTS Offer_db;
+USE Offer_db;
+
+-- 2. Admin Table
 CREATE TABLE admin (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(60) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Categories Table (Independent - e.g., "Food", "Electronics")
+-- 3. Categories Table
 CREATE TABLE categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT
 );
 
--- 4. Users Table (Independent)
+-- 4. Users Table
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    location VARCHAR(255), -- Used to filter local offers
+    password_hash VARCHAR(60) NOT NULL,
+    location VARCHAR(255),
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'approved', -- Defaulted to approved for easier testing
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Shop Owners Table (Depends on Categories)
+-- 5. Shop Owners Table
 CREATE TABLE shop_owners (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(60) NOT NULL,
     shop_name VARCHAR(150) NOT NULL,
     location VARCHAR(255) NOT NULL,
     category_id INT,
-    is_approved BOOLEAN DEFAULT FALSE, -- Admin must approve
+    logo_url VARCHAR(255) DEFAULT NULL,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'approved',
+    is_approved BOOLEAN DEFAULT TRUE, -- Matches your previous logic
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 );
 
--- 6. Offers Table (Depends on Shop Owners)
+-- 6. Offers Table
 CREATE TABLE offers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     shop_id INT NOT NULL,
     title VARCHAR(200) NOT NULL,
     description TEXT,
-    discount_details VARCHAR(255) NOT NULL, -- e.g., "20% Off", "$10 Off"
+    discount_details VARCHAR(255) NOT NULL,
+    image_url VARCHAR(255) DEFAULT NULL,
     valid_until DATETIME NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (shop_id) REFERENCES shop_owners(id) ON DELETE CASCADE
 );
 
--- 7. Claims Table (Depends on Users and Offers)
+-- 7. Claims Table
 CREATE TABLE claims (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     offer_id INT NOT NULL,
-    coupon_code VARCHAR(100) UNIQUE NOT NULL, -- Unique code generated on claim
+    coupon_code VARCHAR(100) UNIQUE NOT NULL,
     claimed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_redeemed BOOLEAN DEFAULT FALSE, -- Track if they actually used it at the shop
+    is_redeemed BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (offer_id) REFERENCES offers(id) ON DELETE CASCADE
 );
-
-SELECT * FROM shop_owners;
-
-ALTER TABLE users ADD COLUMN status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending';
-ALTER TABLE shop_owners ADD COLUMN status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending';
-
--- Automatically approve accounts you already created:
-UPDATE users SET status = 'approved';
-UPDATE shop_owners SET status = 'approved';
-
- Add image_url to offers table to store the URL of the offer's image
-ALTER TABLE offers ADD COLUMN image_url VARCHAR(255) DEFAULT NULL;
-
-ALTER TABLE shop_owners ADD COLUMN logo_url VARCHAR(255) DEFAULT NULL;
