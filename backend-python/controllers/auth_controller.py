@@ -13,6 +13,10 @@ from utils.files import save_upload
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Admin credentials loaded from environment variables
+_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@offer.com")
+_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+
 
 def _make_token(payload: dict) -> str:
     """Sign a JWT that expires in 1 day."""
@@ -197,11 +201,15 @@ async def update_profile(
 # UPDATE PASSWORD
 # ---------------------------------------------------------------------------
 async def update_password(user_id: int, current_password: str, new_password: str, role: Optional[str]):
-    table = "shop_owners" if role == "shop_owner" else "users"
+    # Use explicit conditional instead of f-string to prevent SQL injection
+    is_shop = role == "shop_owner"
     pool = get_pool()
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute(f"SELECT password_hash FROM {table} WHERE id = %s", (user_id,))
+            if is_shop:
+                await cur.execute("SELECT password_hash FROM shop_owners WHERE id = %s", (user_id,))
+            else:
+                await cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
             row = await cur.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="User not found")
@@ -210,7 +218,10 @@ async def update_password(user_id: int, current_password: str, new_password: str
                 raise HTTPException(status_code=400, detail="Incorrect current password!")
 
             new_hash = pwd_context.hash(new_password)
-            await cur.execute(f"UPDATE {table} SET password_hash = %s WHERE id = %s", (new_hash, user_id))
+            if is_shop:
+                await cur.execute("UPDATE shop_owners SET password_hash = %s WHERE id = %s", (new_hash, user_id))
+            else:
+                await cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, user_id))
 
     return {"message": "Password updated securely!"}
 
@@ -219,7 +230,7 @@ async def update_password(user_id: int, current_password: str, new_password: str
 # ADMIN LOGIN
 # ---------------------------------------------------------------------------
 async def login_admin(email: str, password: str):
-    if email == "admin@offer.com" and password == "admin123":
+    if email == _ADMIN_EMAIL and password == _ADMIN_PASSWORD:
         token = _make_token({"id": 999, "role": "admin"})
         return {"token": token, "message": "Welcome, Super Admin!"}
     raise HTTPException(status_code=401, detail="Invalid Admin Credentials")
@@ -230,7 +241,7 @@ async def login_admin(email: str, password: str):
 # ---------------------------------------------------------------------------
 async def unified_login(email: str, password: str):
     # 1. Check hardcoded admin
-    if email == "admin@offer.com" and password == "admin123":
+    if email == _ADMIN_EMAIL and password == _ADMIN_PASSWORD:
         token = _make_token({"id": 999, "role": "admin"})
         return {
             "message": "Welcome, Super Admin!",

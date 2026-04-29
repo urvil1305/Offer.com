@@ -1,7 +1,7 @@
 # backend-python/utils/files.py
 import os
-import time
 import re
+import time
 from typing import Optional
 
 from fastapi import UploadFile
@@ -15,7 +15,16 @@ async def save_upload(file: Optional[UploadFile]) -> Optional[str]:
     if file is None:
         return None
 
-    safe_name = re.sub(r"\s+", "-", file.filename or "upload")
+    original = file.filename or "upload"
+    # Strip path separators, null bytes, and any character that isn't
+    # alphanumeric, a dash, underscore, or a single dot (for the extension).
+    basename = os.path.basename(original)
+    safe_name = re.sub(r"[^\w.\-]", "-", basename)
+    # Collapse consecutive dashes/spaces
+    safe_name = re.sub(r"-{2,}", "-", safe_name).strip("-")
+    if not safe_name:
+        safe_name = "upload"
+
     filename = f"{int(time.time() * 1000)}-{safe_name}"
     dest = os.path.join(UPLOAD_DIR, filename)
 

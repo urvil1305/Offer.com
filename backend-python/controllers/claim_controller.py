@@ -1,6 +1,7 @@
 # backend-python/controllers/claim_controller.py
 import random
 import string
+from datetime import date, datetime
 
 import aiomysql
 from fastapi import HTTPException
@@ -77,7 +78,6 @@ async def get_user_claims(user_id: int):
     for row in rows:
         serialized = {}
         for k, v in row.items():
-            from datetime import datetime, date
             if isinstance(v, (datetime, date)):
                 serialized[k] = v.isoformat()
             else:

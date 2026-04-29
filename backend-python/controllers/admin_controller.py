@@ -1,4 +1,6 @@
 # backend-python/controllers/admin_controller.py
+from datetime import date, datetime
+
 import aiomysql
 from fastapi import HTTPException
 
@@ -74,14 +76,14 @@ async def delete_item(item_type: str, item_id: int, current_user: dict):
 # ---------------------------------------------------------------------------
 async def update_account_status(item_type: str, item_id: int, new_status: str, current_user: dict):
     _require_admin(current_user)
-    table = "users" if item_type == "user" else "shop_owners"
+    # Use explicit conditional instead of f-string to prevent SQL injection
     pool = get_pool()
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
-            await cur.execute(
-                f"UPDATE {table} SET status = %s WHERE id = %s",
-                (new_status, item_id),
-            )
+            if item_type == "user":
+                await cur.execute("UPDATE users SET status = %s WHERE id = %s", (new_status, item_id))
+            else:
+                await cur.execute("UPDATE shop_owners SET status = %s WHERE id = %s", (new_status, item_id))
     return {"message": f"{item_type} has been {new_status}!"}
 
 
@@ -93,7 +95,6 @@ def _serialize(rows) -> list:
     for row in rows:
         serialized = {}
         for k, v in row.items():
-            from datetime import datetime, date
             if isinstance(v, (datetime, date)):
                 serialized[k] = v.isoformat()
             else:

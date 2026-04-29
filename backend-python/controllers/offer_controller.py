@@ -1,4 +1,5 @@
 # backend-python/controllers/offer_controller.py
+from datetime import date, datetime
 from typing import Optional
 
 import aiomysql
@@ -202,7 +203,6 @@ def _serialize_rows(rows) -> list:
     for row in rows:
         serialized = {}
         for k, v in row.items():
-            from datetime import datetime, date
             if isinstance(v, (datetime, date)):
                 serialized[k] = v.isoformat()
             else:
