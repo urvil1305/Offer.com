@@ -36,10 +36,12 @@ const getAllOffers = async (req, res) => {
         // --- NEW: AUTO-DELETE EXPIRED OFFERS ---
         await db.execute('DELETE FROM offers WHERE valid_until < NOW()');
 
-        const [rows] = await db.execute(`
-            SELECT offers.id AS offer_id, offers.title, offers.description, offers.discount_details, offers.valid_until, offers.image_url, shop_owners.shop_name, shop_owners.location 
+      const [rows] = await db.execute(`
+            SELECT offers.*, shop_owners.name AS shop_name, shop_owners.location, categories.name AS category_name 
             FROM offers 
             JOIN shop_owners ON offers.shop_id = shop_owners.id 
+            LEFT JOIN categories ON shop_owners.category_id = categories.id
+            WHERE offers.valid_until >= NOW()
             ORDER BY offers.created_at DESC
         `);
         res.status(200).json(rows);
@@ -166,4 +168,16 @@ const getShopPageData = async (req, res) => {
     }
 };
 
-module.exports = { createOffer, getAllOffers, deleteOffer, getShopOffers, updateOffer, getFeaturedShops, getShopDirectory, getShopPageData };
+// --- GET POPULAR STORES DIRECTORY ---
+const getDirectoryShops = async (req, res) => {
+    try {
+        // Fetch the IDs and names of all registered shops
+        const [shops] = await db.execute('SELECT id, shop_name AS name FROM shop_owners ORDER BY shop_name ASC');
+        res.status(200).json(shops);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error fetching directory' });
+    }
+};
+
+module.exports = { createOffer, getAllOffers, deleteOffer, getShopOffers, updateOffer, getFeaturedShops, getShopDirectory, getShopPageData, getDirectoryShops };

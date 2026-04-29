@@ -7,7 +7,7 @@ const getAdminDashboardData = async (req, res) => {
     if (req.user.id !== 999) return res.status(403).json({ message: 'Access Denied: Admins Only' });
 
     try {
-        const [users] = await db.execute('SELECT id, name, email, location, created_at, status FROM users ORDER BY created_at DESC');
+        const [users] = await db.execute('SELECT id, name, email, location, created_at FROM users ORDER BY created_at DESC');
         const [shops] = await db.execute('SELECT id, shop_name, email, location, created_at, status FROM shop_owners ORDER BY created_at DESC');
         const [offers] = await db.execute(`
             SELECT offers.id, offers.title, offers.discount_details, shop_owners.shop_name, offers.created_at 

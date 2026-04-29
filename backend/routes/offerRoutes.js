@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs'); 
 
-const { createOffer, getAllOffers, deleteOffer, getShopOffers, updateOffer, getFeaturedShops, getShopDirectory, getShopPageData } = require('../controllers/offerController');
+const { createOffer, getAllOffers, deleteOffer, getShopOffers, updateOffer, getFeaturedShops, getShopDirectory, getShopPageData, getDirectoryShops} = require('../controllers/offerController');
 const verifyToken = require('../middleware/authMiddleware');
 
 // --- 1. MULTER SETUP (MUST BE FIRST!) ---
@@ -34,6 +34,7 @@ router.get('/all', getAllOffers);
 router.get('/featured-shops', getFeaturedShops); // <-- ADD THIS LINE!
 router.get('/directory', getShopDirectory);
 router.get('/shop/:id', getShopPageData);
+router.get('/directory', getDirectoryShops);
 
 // THE DELETE ROUTE CAN STAY ABOVE MULTER SINCE IT DOESN'T HANDLE FILE UPLOADS
 router.delete('/:id', verifyToken, deleteOffer);

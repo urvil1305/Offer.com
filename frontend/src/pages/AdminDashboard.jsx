@@ -6,6 +6,9 @@ function AdminDashboard() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  // ---> NEW: State to track which sidebar tab is clicked <---
+  const [activeTab, setActiveTab] = useState('dashboard');
+
   const fetchAdminData = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -86,105 +89,181 @@ function AdminDashboard() {
 
   if (error) return <div className="text-center mt-20 text-red-600 font-extrabold text-2xl">{error}</div>;
 
-  return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
+ return (
+    <div className="flex min-h-screen bg-[#09090b] text-white font-sans overflow-hidden">
+      
+      {/* ================= SIDEBAR ================= */}
+      <aside className="w-72 bg-[#18181b] border-r border-[#27272a] flex flex-col sticky top-0 h-screen flex-shrink-0">
         
-        {/* Admin Header */}
-        <div className="bg-red-600 text-white p-6 rounded-xl shadow-md mb-8 flex justify-between items-center border-b-4 border-red-800">
-          <div>
-            <h1 className="text-3xl font-extrabold flex items-center gap-3">
-              🛡️ Super Admin Control Panel
-            </h1>
-            <p className="opacity-90 mt-1">Manage all users, shop owners, and active offers across the platform.</p>
-          </div>
+        {/* Logo Area */}
+        <div className="h-24 flex items-center justify-center border-b border-[#27272a] bg-[#09090b]">
+          <h1 className="text-4xl font-extrabold text-red-600 tracking-tight">Offer.com</h1>
         </div>
 
-        {/* The 3-Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Navigation Links */}
+        <nav className="flex-1 p-6 space-y-3 overflow-y-auto">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Admin Controls</p>
           
-          {/* Users Column */}
-          <div className="bg-white rounded-xl shadow-md border-t-4 border-blue-500 overflow-hidden flex flex-col max-h-[700px]">
-            <div className="bg-gray-50 p-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">Standard Users ({data.users.length})</h2>
-            </div>
-            <div className="p-4 space-y-3 overflow-y-auto flex-grow">
-              {data.users.map(user => (
-                <div key={user.id} className={`border p-3 rounded-lg flex flex-col gap-3 transition ${user.status === 'pending' ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-bold text-gray-900">{user.name} 
-                        {user.status === 'pending' && <span className="ml-2 text-[10px] bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded uppercase">Pending</span>}
-                        {user.status === 'rejected' && <span className="ml-2 text-[10px] bg-red-200 text-red-800 px-2 py-0.5 rounded uppercase">Rejected</span>}
-                      </p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
-                    </div>
-                    <button onClick={() => handleDelete('user', user.id)} className="text-gray-400 hover:text-red-600 font-bold text-xs transition">Delete</button>
-                  </div>
-                  
-                  {/* Action Buttons for Pending Users */}
-                  {user.status === 'pending' && (
-                    <div className="flex gap-2 mt-1">
-                      <button onClick={() => handleStatusUpdate('user', user.id, 'approved')} className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-1.5 rounded transition">Approve</button>
-                      <button onClick={() => handleStatusUpdate('user', user.id, 'rejected')} className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1.5 rounded transition">Reject</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all duration-300 ${activeTab === 'dashboard' ? 'bg-red-600 text-white shadow-lg shadow-red-900/40' : 'text-gray-400 hover:bg-[#27272a] hover:text-white'}`}>
+            <span>📊</span> Dashboard
+          </button>
+          
+          <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all duration-300 ${activeTab === 'users' ? 'bg-red-600 text-white shadow-lg shadow-red-900/40' : 'text-gray-400 hover:bg-[#27272a] hover:text-white'}`}>
+            <span>👤</span> Standard Users
+          </button>
+          
+          <button onClick={() => setActiveTab('shops')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all duration-300 ${activeTab === 'shops' ? 'bg-red-600 text-white shadow-lg shadow-red-900/40' : 'text-gray-400 hover:bg-[#27272a] hover:text-white'}`}>
+            <span>🏪</span> Shop Owners
+          </button>
+          
+          <button onClick={() => setActiveTab('offers')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all duration-300 ${activeTab === 'offers' ? 'bg-red-600 text-white shadow-lg shadow-red-900/40' : 'text-gray-400 hover:bg-[#27272a] hover:text-white'}`}>
+            <span>🏷️</span> Live Offers
+          </button>
+        </nav>
 
-          {/* Shops Column */}
-          <div className="bg-white rounded-xl shadow-md border-t-4 border-purple-500 overflow-hidden flex flex-col max-h-[700px]">
-            <div className="bg-gray-50 p-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">Shop Owners ({data.shops.length})</h2>
-            </div>
-            <div className="p-4 space-y-3 overflow-y-auto flex-grow">
-              {data.shops.map(shop => (
-                <div key={shop.id} className={`border p-3 rounded-lg flex flex-col gap-3 transition ${shop.status === 'pending' ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-bold text-gray-900">{shop.name} 
-                        {shop.status === 'pending' && <span className="ml-2 text-[10px] bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded uppercase">Pending</span>}
-                        {shop.status === 'rejected' && <span className="ml-2 text-[10px] bg-red-200 text-red-800 px-2 py-0.5 rounded uppercase">Rejected</span>}
-                      </p>
-                      <p className="text-xs text-gray-500">{shop.email}</p>
-                    </div>
-                    <button onClick={() => handleDelete('shop', shop.id)} className="text-gray-400 hover:text-red-600 font-bold text-xs transition">Delete</button>
-                  </div>
-                  
-                  {/* Action Buttons for Pending Users */}
-                  {shop.status === 'pending' && (
-                    <div className="flex gap-2 mt-1">
-                      <button onClick={() => handleStatusUpdate('shop', shop.id, 'approved')} className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-1.5 rounded transition">Approve</button>
-                      <button onClick={() => handleStatusUpdate('shop', shop.id, 'rejected')} className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1.5 rounded transition">Reject</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Offers Column */}
-          <div className="bg-white rounded-xl shadow-md border-t-4 border-green-500 overflow-hidden flex flex-col max-h-[700px]">
-            <div className="bg-gray-50 p-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">Live Offers ({data.offers.length})</h2>
-            </div>
-            <div className="p-4 space-y-3 overflow-y-auto flex-grow">
-              {data.offers.map(offer => (
-                <div key={offer.id} className="border border-gray-200 p-3 rounded-lg flex justify-between items-center bg-gray-50 hover:bg-white transition">
-                  <div>
-                    <p className="font-bold text-gray-900">{offer.title}</p>
-                    <p className="text-xs text-gray-500">🏪 {offer.shop_name}</p>
-                  </div>
-                  <button onClick={() => handleDelete('offer', offer.id)} className="text-red-600 hover:bg-red-600 hover:text-white font-bold text-xs border border-red-200 px-3 py-1.5 rounded transition">Delete</button>
-                </div>
-              ))}
-            </div>
-          </div>
-
+        {/* Logout Button */}
+        <div className="p-6 border-t border-[#27272a] bg-[#09090b]">
+          <button onClick={() => { localStorage.removeItem('token'); window.location.href = '/login'; }} className="w-full bg-[#27272a] hover:bg-red-600 text-white font-bold py-4 rounded-xl transition duration-300 shadow-md">
+            LOGOUT
+          </button>
         </div>
-      </div>
+      </aside>
+
+      {/* ================= MAIN CONTENT AREA ================= */}
+      <main className="flex-1 p-10 h-screen overflow-y-auto">
+        
+        {/* --- TAB 1: DASHBOARD --- */}
+        {activeTab === 'dashboard' && (
+          <div className="animate-fade-in-up">
+            <h2 className="text-3xl font-extrabold mb-8">System Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Summary Cards (Like your friend's top row) */}
+              <div className="bg-[#18181b] border border-[#27272a] p-8 rounded-2xl shadow-xl flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 font-bold uppercase tracking-wider text-sm mb-1">Total Users</p>
+                  <p className="text-4xl font-extrabold text-white">{data.users?.length || 0}</p>
+                </div>
+                <div className="w-16 h-16 bg-blue-900/30 text-blue-500 rounded-2xl flex items-center justify-center text-3xl border border-blue-900/50">👤</div>
+              </div>
+              <div className="bg-[#18181b] border border-[#27272a] p-8 rounded-2xl shadow-xl flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 font-bold uppercase tracking-wider text-sm mb-1">Registered Shops</p>
+                  <p className="text-4xl font-extrabold text-white">{data.shops?.length || 0}</p>
+                </div>
+                <div className="w-16 h-16 bg-green-900/30 text-green-500 rounded-2xl flex items-center justify-center text-3xl border border-green-900/50">🏪</div>
+              </div>
+              <div className="bg-[#18181b] border border-[#27272a] p-8 rounded-2xl shadow-xl flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 font-bold uppercase tracking-wider text-sm mb-1">Active Offers</p>
+                  <p className="text-4xl font-extrabold text-white">{data.offers?.length || 0}</p>
+                </div>
+                <div className="w-16 h-16 bg-red-900/30 text-red-500 rounded-2xl flex items-center justify-center text-3xl border border-red-900/50">🏷️</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB 2: STANDARD USERS TABLE --- */}
+        {activeTab === 'users' && (
+          <div className="animate-fade-in-up">
+            <h2 className="text-3xl font-extrabold mb-8">Standard Users List</h2>
+            <div className="bg-[#18181b] rounded-2xl border border-[#27272a] overflow-hidden shadow-xl">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-red-600 text-white text-sm uppercase tracking-wider">
+                    <th className="p-5 font-extrabold">Name</th>
+                    <th className="p-5 font-extrabold">Email Address</th>
+                    <th className="p-5 font-extrabold text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#27272a]">
+                  {data.users?.map(user => (
+                    <tr key={user.id} className="hover:bg-[#27272a]/50 transition duration-200">
+                      <td className="p-5 font-bold text-gray-200">{user.name}</td>
+                      <td className="p-5 text-gray-400">{user.email}</td>
+                      <td className="p-5 text-center">
+                        <button onClick={() => handleDelete('user', user.id)} className="bg-red-950/50 text-red-500 border border-red-900/50 hover:bg-red-600 hover:text-white px-4 py-2 rounded-lg font-bold text-xs transition">DELETE</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB 3: SHOP OWNERS TABLE --- */}
+        {activeTab === 'shops' && (
+          <div className="animate-fade-in-up">
+            <h2 className="text-3xl font-extrabold mb-8">Shop Owners List</h2>
+            <div className="bg-[#18181b] rounded-2xl border border-[#27272a] overflow-hidden shadow-xl">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-red-600 text-white text-sm uppercase tracking-wider">
+                    <th className="p-5 font-extrabold">Shop Name</th>
+                    <th className="p-5 font-extrabold">Email Address</th>
+                    <th className="p-5 font-extrabold text-center">Status</th>
+                    <th className="p-5 font-extrabold text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#27272a]">
+                  {data.shops?.map(shop => (
+                    <tr key={shop.id} className="hover:bg-[#27272a]/50 transition duration-200">
+                      <td className="p-5 font-bold text-gray-200">{shop.shop_name || shop.name}</td>
+                      <td className="p-5 text-gray-400">{shop.email}</td>
+                      <td className="p-5 text-center">
+                        {shop.status === 'pending' ? (
+                           <div className="flex gap-2 justify-center">
+                             <button onClick={() => handleStatusUpdate('shop', shop.id, 'approved')} className="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold">Approve</button>
+                             <button onClick={() => handleStatusUpdate('shop', shop.id, 'rejected')} className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold">Reject</button>
+                           </div>
+                        ) : (
+                           <span className="text-green-500 font-bold text-xs uppercase bg-green-950/30 px-3 py-1 border border-green-900/50 rounded-full">Active</span>
+                        )}
+                      </td>
+                      <td className="p-5 text-center">
+                        <button onClick={() => handleDelete('shop', shop.id)} className="bg-red-950/50 text-red-500 border border-red-900/50 hover:bg-red-600 hover:text-white px-4 py-2 rounded-lg font-bold text-xs transition">DELETE</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB 4: OFFERS TABLE --- */}
+        {activeTab === 'offers' && (
+          <div className="animate-fade-in-up">
+            <h2 className="text-3xl font-extrabold mb-8">Live Offers List</h2>
+            <div className="bg-[#18181b] rounded-2xl border border-[#27272a] overflow-hidden shadow-xl">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-red-600 text-white text-sm uppercase tracking-wider">
+                    <th className="p-5 font-extrabold">Offer Title</th>
+                    <th className="p-5 font-extrabold">Shop Name</th>
+                    <th className="p-5 font-extrabold">Discount</th>
+                    <th className="p-5 font-extrabold text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#27272a]">
+                  {data.offers?.map(offer => (
+                    <tr key={offer.offer_id} className="hover:bg-[#27272a]/50 transition duration-200">
+                      <td className="p-5 font-bold text-gray-200">{offer.title}</td>
+                      <td className="p-5 text-gray-400">{offer.shop_name}</td>
+                      <td className="p-5 text-red-500 font-bold">{offer.discount_details}</td>
+                      <td className="p-5 text-center">
+                        <button onClick={() => handleDelete('offer', offer.offer_id)} className="bg-red-950/50 text-red-500 border border-red-900/50 hover:bg-red-600 hover:text-white px-4 py-2 rounded-lg font-bold text-xs transition">DELETE</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+      </main>
     </div>
   );
 }

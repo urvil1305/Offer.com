@@ -18,7 +18,7 @@ const registerUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(password, salt);
 
-        // 3. Insert the new user into the database
+        // 3. Insert the new user into the database (Automatically Approved!)
         await db.execute(
             'INSERT INTO users (name, email, password_hash, location) VALUES (?, ?, ?, ?)',
             [name, email, password_hash, location || null]
@@ -50,14 +50,6 @@ const loginUser = async (req, res) => {
             return res.status(400).json({ message: 'Invalid email or password' });
         }
 
-    
-        // --- CHECK APPROVAL STATUS ---
-        if (user.status === 'pending') {
-            return res.status(403).json({ message: 'Your account is waiting for Admin approval.' });
-        }
-        if (user.status === 'rejected') {
-            return res.status(403).json({ message: 'Your account registration was rejected.' });
-        }
 
         // 3. Generate a JWT Token
         const token = jwt.sign(
@@ -80,8 +72,8 @@ const loginUser = async (req, res) => {
 // --- SHOP OWNER SIGNUP ---
 const registerShopOwner = async (req, res) => {
     try {
-        // FIXED: We extract shop_name, not name!
-        const { shop_name, email, password, location } = req.body;
+        // FIXED: We now extract category_id from the form data!
+        const { shop_name, email, password, location, category_id } = req.body;
         
         // 1. Check if email is already used
         const [existingShop] = await db.execute('SELECT * FROM shop_owners WHERE email = ?', [email]);
@@ -94,12 +86,11 @@ const registerShopOwner = async (req, res) => {
         // 3. Grab the uploaded logo path (if they uploaded one)
         const logoUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-        // 4. Save everything to the database!
-        // 4. Save everything to the database!
+        // 4. Save everything to the database, including the new category_id!
+        // Note: We pass shop_name twice to satisfy the 'name' and 'shop_name' columns.
         await db.execute(
-            // FIXED: We are passing data to BOTH 'name' and 'shop_name' to satisfy MySQL!
-            'INSERT INTO shop_owners (name, shop_name, email, password_hash, location, logo_url) VALUES (?, ?, ?, ?, ?, ?)',
-            [shop_name, shop_name, email, hashedPassword, location, logoUrl]
+            'INSERT INTO shop_owners (name, shop_name, category_id, email, password_hash, location, logo_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [shop_name, shop_name, category_id, email, hashedPassword, location, logoUrl]
         );
 
         res.status(201).json({ message: 'Business account created successfully! Please wait for admin approval.' });
@@ -169,7 +160,12 @@ const getProfile = async (req, res) => {
         // We need different queries because users don't have logos, only shops do!
         let query;
         if (role === 'shop_owner') {
-            query = 'SELECT shop_name AS name, email, location, created_at AS joined, logo_url FROM shop_owners WHERE id = ?';
+            query = `
+                        SELECT shop_owners.shop_name AS name, shop_owners.email, shop_owners.location, shop_owners.created_at AS joined, shop_owners.logo_url, categories.name AS category_name 
+                        FROM shop_owners 
+                        LEFT JOIN categories ON shop_owners.category_id = categories.id
+                        WHERE shop_owners.id = ?
+                    `;        
         } else {
             query = 'SELECT name, email, location, created_at AS joined FROM users WHERE id = ?';
         }
@@ -189,29 +185,32 @@ const getProfile = async (req, res) => {
     }
 };
 
-// --- UPDATE PROFILE DETAILS (Now handles image uploads!) ---
+// --- UPDATE PROFILE DETAILS (Now handles image uploads & categories!) ---
 const updateProfile = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { name, location, role } = req.body;
+        // NEW: We extract category_id from the request body!
+        const { name, location, role, category_id } = req.body;
 
         if (role === 'shop_owner') {
             // Check if they uploaded a new logo!
             if (req.file) {
                 const logoUrl = `/uploads/${req.file.filename}`;
                 await db.execute(
-                    'UPDATE shop_owners SET shop_name = ?, location = ?, logo_url = ? WHERE id = ?', 
-                    [name, location, logoUrl, userId]
+                    // Added category_id to the query
+                    'UPDATE shop_owners SET shop_name = ?, location = ?, category_id = ?, logo_url = ? WHERE id = ?', 
+                    [name, location, category_id, logoUrl, userId]
                 );
             } else {
                 // Update without changing the logo
                 await db.execute(
-                    'UPDATE shop_owners SET shop_name = ?, location = ? WHERE id = ?', 
-                    [name, location, userId]
+                    // Added category_id to the query
+                    'UPDATE shop_owners SET shop_name = ?, location = ?, category_id = ? WHERE id = ?', 
+                    [name, location, category_id, userId]
                 );
             }
         } else {
-            // Regular users don't have logos
+            // Regular users don't have logos or categories
             await db.execute('UPDATE users SET name = ?, location = ? WHERE id = ?', [name, location, userId]);
         }
         res.status(200).json({ message: 'Profile updated successfully!' });
@@ -228,20 +227,20 @@ const updatePassword = async (req, res) => {
         const { currentPassword, newPassword, role } = req.body;
         const table = role === 'shop_owner' ? 'shop_owners' : 'users';
 
-        // 1. Get the user's current hashed password from the DB
-        const [rows] = await db.execute(`SELECT password FROM ${table} WHERE id = ?`, [userId]);
+        // 1. FIXED: Select 'password_hash' instead of 'password'
+        const [rows] = await db.execute(`SELECT password_hash FROM ${table} WHERE id = ?`, [userId]);
         if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
 
-        // 2. Compare the current password
-        const isMatch = await bcrypt.compare(currentPassword, rows[0].password);
+        // 2. FIXED: Compare against 'password_hash'
+        const isMatch = await bcrypt.compare(currentPassword, rows[0].password_hash);
         if (!isMatch) return res.status(400).json({ message: 'Incorrect current password!' });
 
         // 3. Hash the new password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-        // 4. Save the new password
-        await db.execute(`UPDATE ${table} SET password = ? WHERE id = ?`, [hashedPassword, userId]);
+        // 4. FIXED: Update the 'password_hash' column
+        await db.execute(`UPDATE ${table} SET password_hash = ? WHERE id = ?`, [hashedPassword, userId]);
 
         res.status(200).json({ message: 'Password updated securely!' });
     } catch (error) {
@@ -294,6 +293,62 @@ const registerShop = async (req, res) => {
     }
 };
 
+// --- UNIFIED SMART LOGIN ---
+const unifiedLogin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const jwt = require('jsonwebtoken'); // Ensure jwt is available
+
+        // 1. Check if it's the Super Admin
+        if (email === 'admin@offer.com' && password === 'admin123') {
+            const token = jwt.sign({ id: 999, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1d' });
+            return res.status(200).json({ message: 'Welcome, Super Admin!', token, role: 'admin', user: { id: 999, name: 'Super Admin', email } });
+        }
+
+        // 2. Check the Users Table
+        const [users] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+        if (users.length > 0) {
+            const user = users[0];
+            const isMatch = await bcrypt.compare(password, user.password_hash);
+            if (isMatch) {
+                const token = jwt.sign({ id: user.id, role: 'user' }, process.env.JWT_SECRET, { expiresIn: '1d' });
+                return res.status(200).json({ 
+                    message: 'Login successful', 
+                    token, 
+                    role: 'user', // <--- Telling React this is a normal user
+                    user: { id: user.id, name: user.name, email: user.email } 
+                });
+            }
+        }
+
+        // 3. Check the Shop Owners Table
+        const [owners] = await db.execute('SELECT * FROM shop_owners WHERE email = ?', [email]);
+        if (owners.length > 0) {
+            const owner = owners[0];
+            const isMatch = await bcrypt.compare(password, owner.password_hash);
+            if (isMatch) {
+                if (owner.status === 'pending') return res.status(403).json({ message: 'Your account is waiting for Admin approval.' });
+                if (owner.status === 'rejected') return res.status(403).json({ message: 'Your account registration was rejected.' });
+
+                const token = jwt.sign({ id: owner.id, role: 'shop_owner' }, process.env.JWT_SECRET, { expiresIn: '1d' });
+                return res.status(200).json({ 
+                    message: 'Login successful', 
+                    token, 
+                    role: 'shop_owner', // <--- Telling React this is a business
+                    user: { id: owner.id, name: owner.name, shop_name: owner.shop_name, email: owner.email } 
+                });
+            }
+        }
+
+        // 4. If we reach here, the email/password didn't match ANY of the 3 databases!
+        return res.status(400).json({ message: 'Invalid email or password' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error during login' });
+    }
+};
+
 module.exports = { 
     registerUser, 
     loginUser, 
@@ -303,5 +358,6 @@ module.exports = {
     updateProfile,
     updatePassword,
     loginAdmin,
-    registerShop
+    registerShop,
+    unifiedLogin
 };

@@ -5,6 +5,9 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation(); 
   const [searchQuery, setSearchQuery] = useState('');
+  const isAdminPage = location.pathname === '/admin';
+  const isloginPage = location.pathname === '/login';
+  const issignupPage = location.pathname === '/signup';
   
   // NEW: State to hold the user's profile info (for the logo!)
   const [profileData, setProfileData] = useState(null);
@@ -36,6 +39,11 @@ function Navbar() {
     if (searchQuery.trim()) navigate(`/?search=${searchQuery}`);
     else navigate('/');
   };
+
+  // ---> NEW LINE: If we are on the admin page, do not render the Navbar at all! <---
+  if (isAdminPage) return null;
+  if (isloginPage) return null;
+  if (issignupPage) return null;
 
   return (
     <nav className="bg-[#18181b] border-b border-[#27272a] shadow-lg sticky top-0 z-50">
@@ -102,6 +110,7 @@ function Navbar() {
         </div>
       </div>
     </nav>
+    
   );
 }
 

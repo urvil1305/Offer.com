@@ -15,7 +15,8 @@ const {
     updateProfile,
     loginAdmin,
     updatePassword,
-    registerShop
+    registerShop,
+    unifiedLogin
 } = require('../controllers/authController');
 const verifyToken = require('../middleware/authMiddleware');
 
@@ -29,6 +30,7 @@ const upload = multer({ storage });
 // --- User Routes ---
 router.post('/register/user', registerUser);    
 router.post('/login/user', loginUser);
+router.post('/login', unifiedLogin);
 
 // --- The secure profile route! ---
 router.get('/me', verifyToken, getProfile);

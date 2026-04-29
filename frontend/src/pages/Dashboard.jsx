@@ -7,6 +7,10 @@ function Dashboard() {
   const [selectedOffer, setSelectedOffer] = useState(null); 
   const [claimResult, setClaimResult] = useState(null);     
   
+  // --- NEW: STATE FOR CATEGORY TABS ---
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const categories = ['All', 'Electronics', 'Food & Beverage'];
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const searchTerm = searchParams.get('search') || ''; 
@@ -18,7 +22,6 @@ function Dashboard() {
       .then((data) => setOffers(data))
       .catch((err) => console.error("Error fetching offers:", err));
 
-    // NEW: FETCH THE STORE DIRECTORY
     fetch('http://localhost:5000/api/offers/directory')
       .then((res) => res.json())
       .then((data) => setDirectoryShops(data))
@@ -57,12 +60,15 @@ function Dashboard() {
     setClaimResult(null); 
   };
 
+  // --- UPDATED: FILTER BY SEARCH & CATEGORY ---
   const filteredOffers = offers.filter((offer) => {
     const searchLower = searchTerm.toLowerCase();
-    return (
-      offer.title.toLowerCase().includes(searchLower) ||
-      offer.shop_name.toLowerCase().includes(searchLower)
-    );
+    const matchesSearch = offer.title.toLowerCase().includes(searchLower) || offer.shop_name.toLowerCase().includes(searchLower);
+    
+    // Check if the offer matches the selected category (or if 'All' is selected)
+    const matchesCategory = selectedCategory === 'All' || offer.category_name === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
   });
 
   // Grab the Top 5 newest offers for the sliding banner!
@@ -71,13 +77,10 @@ function Dashboard() {
   const latestOffers = [...filteredOffers].reverse().slice(0, 5); 
   const expiringSoon = [...filteredOffers].sort((a, b) => new Date(a.valid_until) - new Date(b.valid_until)).slice(0, 5);
 
-  
-
   // --- REAL DATABASE AUTO-SLIDING CAROUSEL ---
   const HeroCarousel = ({ slideOffers }) => {
     const [currentSlide, setCurrentSlide] = useState(0);
 
-    // Auto-slide effect
     useEffect(() => {
       if (!slideOffers || slideOffers.length === 0) return;
       const timer = setInterval(() => {
@@ -90,19 +93,9 @@ function Dashboard() {
 
     return (
       <div className="w-full h-80 md:h-[400px] rounded-2xl overflow-hidden relative mb-12 shadow-2xl border border-[#27272a] group bg-[#09090b]">
-        
-        {/* Images Track */}
-        <div 
-          className="flex w-full h-full transition-transform duration-700 ease-in-out"
-          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-        >
+        <div className="flex w-full h-full transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
           {slideOffers.map((offer) => (
-            <div 
-              key={offer.offer_id} 
-              className="min-w-full h-full relative cursor-pointer"
-              onClick={() => setSelectedOffer(offer)}
-            >
-              {/* Premium Background Blur Effect */}
+            <div key={offer.offer_id} className="min-w-full h-full relative cursor-pointer" onClick={() => setSelectedOffer(offer)}>
               {offer.image_url && (
                 <>
                   <img src={`http://localhost:5000${offer.image_url}`} alt="blur" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-2xl scale-110" />
@@ -111,38 +104,24 @@ function Dashboard() {
                   </div>
                 </>
               )}
-              
-              {/* Dark Gradients to ensure text is readable */}
               <div className="absolute inset-0 bg-gradient-to-r from-[#09090b] via-[#09090b]/90 to-transparent z-10"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent z-10"></div>
-
-              {/* Text Content */}
               <div className="absolute inset-0 flex flex-col justify-center p-8 md:p-16 items-start text-left w-full md:w-2/3 z-20">
                 <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-4 shadow-lg shadow-red-900/50 uppercase tracking-widest border border-red-500">
                   🔥 TOP DEAL: {offer.discount_details}
                 </span>
-                <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4 leading-tight drop-shadow-lg line-clamp-2">
-                  {offer.title}
-                </h2>
+                <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4 leading-tight drop-shadow-lg line-clamp-2">{offer.title}</h2>
                 <p className="text-gray-400 font-medium mb-8 text-lg drop-shadow-md">
                   Offered by <span className="text-gray-200">{offer.shop_name}</span> in {offer.location}
                 </p>
-                <button className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition duration-200 shadow-lg shadow-red-600/30 border border-red-500 hover:border-transparent">
-                  CLAIM NOW
-                </button>
+                <button className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition duration-200 shadow-lg shadow-red-600/30 border border-red-500 hover:border-transparent">CLAIM NOW</button>
               </div>
             </div>
           ))}
         </div>
-
-        {/* Navigation Dots */}
         <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 z-30">
           {slideOffers.map((_, index) => (
-            <button
-              key={index}
-              onClick={(e) => { e.stopPropagation(); setCurrentSlide(index); }}
-              className={`h-2 rounded-full transition-all duration-300 ${currentSlide === index ? 'bg-red-500 w-8 shadow-md shadow-red-900/50' : 'bg-gray-600 w-2 hover:bg-gray-400'}`}
-            ></button>
+            <button key={index} onClick={(e) => { e.stopPropagation(); setCurrentSlide(index); }} className={`h-2 rounded-full transition-all duration-300 ${currentSlide === index ? 'bg-red-500 w-8 shadow-md shadow-red-900/50' : 'bg-gray-600 w-2 hover:bg-gray-400'}`}></button>
           ))}
         </div>
       </div>
@@ -151,32 +130,21 @@ function Dashboard() {
 
   // --- DARK MODE OFFER CARD ---
   const OfferCard = ({ offer, badgeText }) => (
-    <div 
-      onClick={() => setSelectedOffer(offer)}
-      className="bg-[#18181b] rounded-xl shadow-lg hover:shadow-red-900/20 transition duration-300 border border-[#27272a] hover:border-red-900/50 overflow-hidden cursor-pointer flex flex-col relative group"
-    >
-      <div className="absolute top-0 left-0 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-br-lg z-10 shadow-sm">
-        {badgeText}
-      </div>
-
+    <div onClick={() => setSelectedOffer(offer)} className="bg-[#18181b] rounded-xl shadow-lg hover:shadow-red-900/20 transition duration-300 border border-[#27272a] hover:border-red-900/50 overflow-hidden cursor-pointer flex flex-col relative group">
+      <div className="absolute top-0 left-0 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-br-lg z-10 shadow-sm">{badgeText}</div>
       <div className="h-36 bg-[#09090b] flex items-center justify-center relative border-b border-[#27272a] overflow-hidden">
         {offer.image_url ? (
-          <img 
-            src={`http://localhost:5000${offer.image_url}`} 
-            alt={offer.title} 
-            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110"
-          />
+          <img src={`http://localhost:5000${offer.image_url}`} alt={offer.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110" />
         ) : (
-          <h3 className="text-3xl font-extrabold text-[#27272a] tracking-widest uppercase">
-            {offer.shop_name.substring(0, 3)}
-          </h3>
+          <h3 className="text-3xl font-extrabold text-[#27272a] tracking-widest uppercase">{offer.shop_name.substring(0, 3)}</h3>
         )}
-        <div className="absolute -bottom-4 right-4 bg-[#18181b] border border-[#27272a] shadow-lg rounded-full px-4 py-1 text-xs font-bold text-red-500 z-10">
-          {offer.discount_details}
-        </div>
+        <div className="absolute -bottom-4 right-4 bg-[#18181b] border border-[#27272a] shadow-lg rounded-full px-4 py-1 text-xs font-bold text-red-500 z-10">{offer.discount_details}</div>
       </div>
-
       <div className="p-5 pt-6 flex-grow flex flex-col">
+        {/* NEW: Displays the Category Name on the card! */}
+        {offer.category_name && (
+           <p className="text-[10px] text-red-500 font-bold uppercase tracking-wider mb-1">{offer.category_name}</p>
+        )}
         <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">{offer.shop_name}</p>
         <h4 className="text-gray-200 font-medium text-sm leading-snug line-clamp-2 group-hover:text-white transition">{offer.title}</h4>
       </div>
@@ -186,12 +154,12 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-[#09090b]">
       <main className="max-w-7xl mx-auto p-8 pt-6">
-        
+          
         {searchTerm ? (
           <div>
             <h2 className="text-2xl font-bold text-white mb-6">Search Results for "{searchTerm}"</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {filteredOffers.map(offer => <OfferCard key={offer.offer_id} offer={offer} badgeText="SEARCH RESULT" />)}
+              {filteredOffers.length > 0 ? filteredOffers.map(offer => <OfferCard key={offer.offer_id} offer={offer} badgeText="SEARCH RESULT" />) : <p className="text-gray-500">No deals found.</p>}
             </div>
           </div>
         ) : (
@@ -199,16 +167,33 @@ function Dashboard() {
             {/* --- REAL DATABASE CAROUSEL --- */}
             <HeroCarousel slideOffers={topSliderOffers} />
 
+            {/* --- NEW: CATEGORY FILTER TABS --- */}
+            <div className="flex gap-4 mb-10 overflow-x-auto pb-2 mt-4" style={{ scrollbarWidth: 'none' }}>
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-6 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-300 border ${
+                    selectedCategory === cat 
+                    ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-900/40' 
+                    : 'bg-[#18181b] text-gray-400 border-[#27272a] hover:text-white hover:border-gray-500'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
             {/* --- FEATURED DEALS GRID --- */}
             <div className="mb-14">
               <div className="flex justify-between items-end mb-6 border-b border-[#27272a] pb-2">
-                <h2 className="text-2xl font-extrabold text-white tracking-tight">Featured Deals</h2>
-                <Link to="/all-deals" className="text-red-500 hover:text-red-400 font-bold text-sm transition">
-                  View All &rarr;
-                </Link>
+                <h2 className="text-2xl font-extrabold text-white tracking-tight">
+                  Featured Deals {selectedCategory !== 'All' && <span className="text-red-500 text-lg ml-2">({selectedCategory})</span>}
+                </h2>
+                <Link to="/all-deals" className="text-red-500 hover:text-red-400 font-bold text-sm transition">View All &rarr;</Link>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                {latestOffers.map(offer => <OfferCard key={offer.offer_id} offer={offer} badgeText="NEW ARRIVAL" />)}
+                {latestOffers.length > 0 ? latestOffers.map(offer => <OfferCard key={offer.offer_id} offer={offer} badgeText="NEW ARRIVAL" />) : <p className="text-gray-500 col-span-full">No active offers in this category.</p>}
               </div>
             </div>
 
@@ -216,12 +201,10 @@ function Dashboard() {
             <div className="mb-16">
               <div className="flex justify-between items-end mb-6 border-b border-[#27272a] pb-2">
                 <h2 className="text-2xl font-extrabold text-white tracking-tight">Expiring Soon</h2>
-                <Link to="/all-deals" className="text-red-500 hover:text-red-400 font-bold text-sm transition">
-                  View All &rarr;
-                </Link>
+                <Link to="/all-deals" className="text-red-500 hover:text-red-400 font-bold text-sm transition">View All &rarr;</Link>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                {expiringSoon.map(offer => <OfferCard key={offer.offer_id} offer={offer} badgeText="LIMITED TIME" />)}
+                {expiringSoon.length > 0 ? expiringSoon.map(offer => <OfferCard key={offer.offer_id} offer={offer} badgeText="LIMITED TIME" />) : <p className="text-gray-500 col-span-full">No active offers in this category.</p>}
               </div>
             </div>
 
@@ -229,19 +212,12 @@ function Dashboard() {
             <div className="mb-10 border-t border-[#27272a] pt-10">
               <h2 className="text-lg font-bold text-white mb-6">Popular Stores Directory</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-y-4 gap-x-6">
-                
-                {/* Dynamically mapped from your database! */}
                 {directoryShops.map((shop) => (
-                  <Link 
-                    key={shop.id} 
-                    to={`/shop/${shop.id}`} 
-                    className="text-gray-500 hover:text-red-400 font-medium text-sm transition flex items-center gap-2 group"
-                  >
+                  <Link key={shop.id} to={`/shop/${shop.id}`} className="text-gray-500 hover:text-red-400 font-medium text-sm transition flex items-center gap-2 group">
                     <span className="text-xs opacity-0 group-hover:opacity-100 text-red-600 transition-opacity">➤</span>
                     {shop.name}
                   </Link>
                 ))}
-                
               </div>
             </div>
           </>
@@ -253,9 +229,7 @@ function Dashboard() {
         <div className="max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <h3 className="text-2xl font-extrabold text-red-600 mb-4 tracking-tight">Offer.com</h3>
-            <p className="text-sm leading-relaxed">
-              Your elite destination for discovering the best local discounts. Shop local, save big.
-            </p>
+            <p className="text-sm leading-relaxed">Your elite destination for discovering the best local discounts. Shop local, save big.</p>
           </div>
           <div>
             <h4 className="text-lg font-bold mb-4 text-white">Company</h4>
